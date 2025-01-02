@@ -44,10 +44,34 @@ export const createForm = createAsyncThunk(
 	}
 );
 
+export const fetchFormsById = createAsyncThunk(
+	"forms/fetchFormsById", // Renamed for clarity
+	async (id, { rejectWithValue }) => {
+		try {
+			// Get the auth token from the localStorage
+			const token = localStorage.getItem("user");
+
+			// Ensure the id is passed in the request URL
+			const response = await axiosInstance.get(`/forms/${id}`, {
+				headers: {
+					Authorization: `Bearer ${token}`, // Include the token in the header
+				},
+			});
+
+			return response.data.forms; // Return the specific form data
+		} catch (error) {
+			return rejectWithValue(
+				error.response?.data?.message || "Failed to fetch form by ID."
+			);
+		}
+	}
+);
+
 const formsSlice = createSlice({
 	name: "forms",
 	initialState: {
 		forms: [], // Ensure this is an empty array initially
+		editForms: {},
 		loading: false,
 		error: null,
 	},
@@ -65,6 +89,18 @@ const formsSlice = createSlice({
 			.addCase(fetchForms.rejected, (state, action) => {
 				state.loading = false;
 				state.error = action.payload;
+			})
+			.addCase(fetchFormsById.pending, (state) => {
+				state.loading = true;
+				state.error = null;
+			})
+			.addCase(fetchFormsById.fulfilled, (state, action) => {
+				state.loading = false;
+				state.editForms = action.payload; // Store the form data in the state
+			})
+			.addCase(fetchFormsById.rejected, (state, action) => {
+				state.loading = false;
+				state.error = action.payload; // Store the error message
 			});
 	},
 });

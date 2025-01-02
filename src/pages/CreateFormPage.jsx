@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
-import { createForm, updateForm } from "../features/forms/formSlice";
+import {
+	createForm,
+	updateForm,
+	fetchFormsById,
+} from "../features/forms/formSlice";
 
 const inputTypes = [
 	{ id: "text", label: "Text" },
@@ -16,8 +20,14 @@ const CreateFormPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 
+	const { forms, loading, error, editForms } = useSelector(
+		(state) => state.forms
+	);
+
+	console.log(editForms);
+
 	// Check if editing an existing form
-	const existingForm = location.state?.form || null;
+	const existingForm = location.pathname.split("/")[2] || null;
 
 	// States
 	const [formName, setFormName] = useState("");
@@ -27,9 +37,10 @@ const CreateFormPage = () => {
 	// Prepopulate fields in Edit mode
 	useEffect(() => {
 		if (existingForm) {
-			setFormName(existingForm.formName);
-			setFormDescription(existingForm.formDescription);
-			setFormFields(existingForm.formFields);
+			dispatch(fetchFormsById(existingForm));
+			setFormName(editForms.formName);
+			setFormDescription(editForms.formDescription);
+			setFormFields(editForms.formFields);
 		}
 	}, [existingForm]);
 
@@ -184,122 +195,134 @@ const CreateFormPage = () => {
 											snapshot.isDraggingOver ? "bg-blue-100" : ""
 										}`}
 									>
-										{formFields.map((field, index) => (
-											<Draggable
-												key={`field-${index}`}
-												draggableId={`field-${index}`}
-												index={index}
-											>
-												{(provided) => (
-													<div
-														{...provided.draggableProps}
-														{...provided.dragHandleProps}
-														ref={provided.innerRef}
-														className="p-4 border rounded-lg bg-white shadow-md"
+										{formFields.length > 0
+											? formFields.map((field, index) => (
+													<Draggable
+														key={`field-${index}`}
+														draggableId={`field-${index}`}
+														index={index}
 													>
-														{/* Field Name */}
-														<div className="mb-2">
-															<label className="block text-sm font-semibold text-gray-700">
-																Field Name
-															</label>
-															<input
-																type="text"
-																name="fieldName"
-																value={field.fieldName}
-																onChange={(e) => handleFieldChange(index, e)}
-																className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-																placeholder="Enter field name"
-																required
-															/>
-														</div>
+														{(provided) => (
+															<div
+																{...provided.draggableProps}
+																{...provided.dragHandleProps}
+																ref={provided.innerRef}
+																className="p-4 border rounded-lg bg-white shadow-md"
+															>
+																{/* Field Name */}
+																<div className="mb-2">
+																	<label className="block text-sm font-semibold text-gray-700">
+																		Field Name
+																	</label>
+																	<input
+																		type="text"
+																		name="fieldName"
+																		value={field.fieldName}
+																		onChange={(e) =>
+																			handleFieldChange(index, e)
+																		}
+																		className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+																		placeholder="Enter field name"
+																		required
+																	/>
+																</div>
 
-														{/* Placeholder Input for Text, Email, Textarea */}
-														{(field.fieldType === "text" ||
-															field.fieldType === "email" ||
-															field.fieldType === "textarea") && (
-															<div className="mb-2">
-																<label className="block text-sm font-semibold text-gray-700">
-																	Placeholder
-																</label>
-																<input
-																	type="text"
-																	name="placeholder"
-																	value={field.placeholder}
-																	onChange={(e) => handleFieldChange(index, e)}
-																	className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-																	placeholder="Enter placeholder text"
-																/>
-															</div>
-														)}
-
-														{/* Render Textarea */}
-														{field.fieldType === "textarea" && (
-															<textarea
-																className="w-full px-4 py-2 border rounded-lg"
-																placeholder={field.placeholder || "Textarea"}
-																disabled
-															/>
-														)}
-
-														{/* Render Radio Options */}
-														{field.fieldType === "radio" && (
-															<div>
-																<label className="block text-sm font-semibold text-gray-700">
-																	Options
-																</label>
-																{field.options.map((option, optionIndex) => (
-																	<div
-																		key={optionIndex}
-																		className="flex items-center mb-2"
-																	>
+																{/* Placeholder Input for Text, Email, Textarea */}
+																{(field.fieldType === "text" ||
+																	field.fieldType === "email" ||
+																	field.fieldType === "textarea") && (
+																	<div className="mb-2">
+																		<label className="block text-sm font-semibold text-gray-700">
+																			Placeholder
+																		</label>
 																		<input
 																			type="text"
-																			value={option}
+																			name="placeholder"
+																			value={field.placeholder}
 																			onChange={(e) =>
-																				handleOptionChange(
-																					index,
-																					optionIndex,
-																					e.target.value
-																				)
+																				handleFieldChange(index, e)
 																			}
-																			className="w-full px-4 py-2 border rounded-lg"
-																			placeholder={`Option ${optionIndex + 1}`}
+																			className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+																			placeholder="Enter placeholder text"
 																		/>
 																	</div>
-																))}
-																<button
-																	type="button"
-																	onClick={() => addOption(index)}
-																	className="text-blue-500 text-sm"
-																>
-																	Add Option
-																</button>
+																)}
+
+																{/* Render Textarea */}
+																{field.fieldType === "textarea" && (
+																	<textarea
+																		className="w-full px-4 py-2 border rounded-lg"
+																		placeholder={
+																			field.placeholder || "Textarea"
+																		}
+																		disabled
+																	/>
+																)}
+
+																{/* Render Radio Options */}
+																{field.fieldType === "radio" && (
+																	<div>
+																		<label className="block text-sm font-semibold text-gray-700">
+																			Options
+																		</label>
+																		{field.options.map(
+																			(option, optionIndex) => (
+																				<div
+																					key={optionIndex}
+																					className="flex items-center mb-2"
+																				>
+																					<input
+																						type="text"
+																						value={option}
+																						onChange={(e) =>
+																							handleOptionChange(
+																								index,
+																								optionIndex,
+																								e.target.value
+																							)
+																						}
+																						className="w-full px-4 py-2 border rounded-lg"
+																						placeholder={`Option ${
+																							optionIndex + 1
+																						}`}
+																					/>
+																				</div>
+																			)
+																		)}
+																		<button
+																			type="button"
+																			onClick={() => addOption(index)}
+																			className="text-blue-500 text-sm"
+																		>
+																			Add Option
+																		</button>
+																	</div>
+																)}
+
+																{/* Required Checkbox */}
+																<div className="mt-4">
+																	<input
+																		type="checkbox"
+																		name="required"
+																		checked={field.required}
+																		onChange={(e) =>
+																			handleFieldChange(index, {
+																				target: {
+																					name: "required",
+																					value: e.target.checked,
+																				},
+																			})
+																		}
+																	/>
+																	<label className="text-sm font-semibold text-gray-700 ml-1">
+																		Required
+																	</label>
+																</div>
 															</div>
 														)}
-
-														{/* Required Checkbox */}
-														<div className="mt-4">
-															<input
-																type="checkbox"
-																name="required"
-																checked={field.required}
-																onChange={(e) =>
-																	handleFieldChange(index, {
-																		target: {
-																			name: "required",
-																			value: e.target.checked,
-																		},
-																	})
-																}
-															/>
-															<label className="text-sm font-semibold text-gray-700 ml-1">
-																Required
-															</label>
-														</div>
-													</div>
-												)}
-											</Draggable>
-										))}
+													</Draggable>
+											  ))
+											: null}
 
 										{provided.placeholder}
 									</div>
